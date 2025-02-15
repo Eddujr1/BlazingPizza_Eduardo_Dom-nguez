@@ -1,0 +1,46 @@
+﻿@page "/cambiar-color-fondo"  
+@inherits LayoutComponentBase  // Hereda de LayoutComponentBase para definir una estructura común
+
+<div class="top-bar">
+    <a class="logo" href="">
+        <img src="img/logo.svg" />  
+    </a>
+
+    <NavLink href="" class="nav-tab" Match="NavLinkMatch.All">
+        <img src="img/pizza-slice.svg" />
+        <div>Get Pizza</div>  
+    </NavLink>
+
+    <AuthorizeView>
+        <NavLink href="myorders" class="nav-tab">
+            <img src="img/bike.svg" />
+            <div>My Orders</div>  
+        </NavLink>
+    </AuthorizeView>
+
+    <LoginDisplay />  
+</div>
+
+<div class="content @backgroundColorClass">
+    @Body  
+</div>
+
+<button class="bottom-right-button" @onclick="ChangeBackgroundColor">Cambiar color de fondo</button>
+<!-- Botón para cambiar el color de fondo -->
+@code {
+    private string backgroundColorClass = "white-background";  // Clase inicial del fondo
+    private bool isRed = false;  // Estado para alternar colores
+
+    private void ChangeBackgroundColor()
+    {
+        if (isRed)
+        {
+            backgroundColorClass = "white-background";  // Cambia a fondo blanco
+        }
+        else
+        {
+            backgroundColorClass = "red-background";  // Cambia a fondo rojo
+        }
+        isRed = !isRed;  // Alterna el estado
+    }
+}

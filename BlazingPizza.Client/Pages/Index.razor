@@ -1,0 +1,119 @@
+﻿@page "/"
+@inject HttpClient HttpClient
+@inject OrderState OrderState
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<!-- Librerías para notificaciones -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<div class="cart-icon-container">
+    <i class="fa fa-shopping-cart"></i>
+    <span class="cart-counter">@Order.Pizzas.Count</span>
+</div>
+
+<div class="main">
+    <ul class="pizza-cards">
+        @if (specials != null)
+        {
+            @foreach (var special in specials)
+            {
+                <li @onclick="@(() => OrderState.ShowConfigurePizzaDialog(special))" style="background-image: url('@special.ImageUrl')">
+                    <div class="pizza-info">
+                        <span class="title">@special.Name</span>
+                        @special.Description
+                        <span class="price">@ConvertPrice(special.BasePrice)</span>
+                        <!-- Precio convertido dinámicamente -->
+                    </div>
+                </li>
+            }
+        }
+    </ul>
+</div>
+
+<div class="sidebar">
+    @if (Order.Pizzas.Any())
+    {
+        <div class="order-contents">
+            <h2>Your order</h2>
+            @foreach (var configuredPizza in Order.Pizzas)
+            {
+                <ConfiguredPizzaItem Pizza="configuredPizza" OnRemoved="@(() => RemovePizza(configuredPizza))" />
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-cart">Choose a pizza<br>to get started</div>
+        <!-- Mensaje cuando no hay pizzas en el carrito -->
+    }
+
+    <div class="order-total @(Order.Pizzas.Any() ? "" : "hidden")">
+        Total:
+        <span class="total-price">@ConvertPrice(Order.GetTotalPrice())</span>
+        <!-- Total convertido dinámicamente -->
+        <a href="checkout" class="@(Order.Pizzas.Count == 0 ? "btn btn-warning disabled" : "btn btn-warning")">
+            Order >
+        </a>
+    </div>
+</div>
+
+<!-- Botón para cambiar la moneda entre Libras y Euros -->
+<button class="convert-button" @onclick="ConvertCurrency">Cambiar a @(isCurrencyConverted ? "Libras" : "Euros")</button>
+
+<!-- Diálogo para personalizar pizzas -->
+<TemplatedDialog Show="OrderState.ShowingConfigureDialog">
+    <ConfigurePizzaDialog Pizza="OrderState.ConfiguringPizza"
+                          OnCancel="OrderState.CancelConfigurePizzaDialog"
+                          OnConfirm="OrderState.ConfirmConfigurePizzaDialog" />
+</TemplatedDialog>
+
+@code {
+    List<PizzaSpecial>? specials;
+    Order Order => OrderState.Order;
+    bool isCurrencyConverted = false;  // Estado de conversión de moneda
+    const decimal ConversionRate = 1.17m;  // Tasa de conversión ejemplo
+
+    protected override async Task OnInitializedAsync()
+    {
+        specials = await HttpClient.GetFromJsonAsync<List<PizzaSpecial>>("specials");
+        // Carga las pizzas desde el servidor al iniciar
+    }
+
+    async Task RemovePizza(Pizza configuredPizza)
+    {
+        if (await JS.Confirm($"Remove {configuredPizza.Special?.Name} pizza from the order?"))
+        {
+            OrderState.RemoveConfiguredPizza(configuredPizza);
+            await JS.InvokeVoidAsync("Toastify", new
+            {
+                text = $"Pizza '{configuredPizza.Special?.Name}' removed from the order!",
+                duration = 3000,
+                gravity = "top",
+                position = "right",
+                backgroundColor = "#f44336"
+            });
+            // Notificación de eliminación de pizza
+        }
+    }
+
+    void ConvertCurrency()
+    {
+        isCurrencyConverted = !isCurrencyConverted;
+        // Alterna entre Libras y Euros
+        StateHasChanged();  // Fuerza la actualización de la UI
+    }
+
+    string ConvertPrice(decimal price)
+    {
+        if (isCurrencyConverted)
+        {
+            return (price * ConversionRate).ToString("C", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
+        }
+        else
+        {
+            return price.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-GB"));
+        }
+    }
+}
